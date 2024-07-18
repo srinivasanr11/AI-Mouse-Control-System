@@ -119,3 +119,152 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project is licensed under the MIT License.
 
 ---
+
+# Virtual Mouse with Hand Gestures
+
+This project uses OpenCV, Mediapipe, and PyAutoGUI to control the mouse cursor and perform actions with hand gestures. It leverages hand landmark detection to translate gestures into mouse movements and clicks.
+
+## Prerequisites
+
+- Python 3.x
+- OpenCV
+- Mediapipe
+- PyAutoGUI
+
+## Installation
+
+1. Clone the repository:
+
+    ```sh
+    git clone https://github.com/yourusername/virtual-mouse-hand-gestures.git
+    cd virtual-mouse-hand-gestures
+    ```
+
+2. Install the required libraries:
+
+    ```sh
+    pip install opencv-python mediapipe pyautogui
+    ```
+
+## Usage
+
+1. Run the script:
+
+    ```sh
+    python virtual_mouse.py
+    ```
+
+2. The script will initialize your webcam and start detecting hand landmarks. The mouse cursor will move based on the specified hand landmarks.
+
+3. Hand Gestures:
+    - **Move Cursor**: Use your index finger to move the cursor.
+    - **Left Click**: Bring your thumb close to your index finger.
+    - **Scroll**: Increase the distance between your thumb and index finger to scroll up; decrease the distance to scroll down.
+    - **Right Click**: Lower your middle finger below your index finger.
+
+4. Press `q` to exit the program.
+
+## Code Explanation
+
+### Import necessary libraries
+
+```python
+import cv2
+import mediapipe as mp
+import pyautogui
+import math
+```
+
+### Disable PyAutoGUI fail-safe
+
+```python
+pyautogui.FAILSAFE = False
+```
+
+### Initialize the camera and hand detector
+
+```python
+cap = cv2.VideoCapture(0)
+hand_detector = mp.solutions.hands.Hands()
+drawing_utils = mp.solutions.drawing_utils
+screen_width, screen_height = pyautogui.size()
+index_x, index_y = 0, 0
+middle_finger_clicked = False
+```
+
+### Main loop for capturing and processing video frames
+
+```python
+while True:
+    _, frame = cap.read()
+    frame = cv2.flip(frame, 1)
+    frame_height, frame_width, _ = frame.shape
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    output = hand_detector.process(rgb_frame)
+    hands = output.multi_hand_landmarks
+
+    if hands:
+        for hand in hands:
+            drawing_utils.draw_landmarks(frame, hand)
+            landmarks = hand.landmark
+            for id, landmark in enumerate(landmarks):
+                x = int(landmark.x * frame_width)
+                y = int(landmark.y * frame_height)
+
+                if id == 8:
+                    cv2.circle(img=frame, center=(x, y), radius=20, color=(100, 255, 255))
+                    index_x = int(screen_width / frame_width * x)
+                    index_y = int(screen_height / frame_height * y)
+
+                if id == 4:
+                    cv2.circle(img=frame, center=(x, y), radius=20, color=(100, 255, 255))
+                    thumb_x = int(screen_width / frame_width * x)
+                    thumb_y = int(screen_height / frame_height * y)
+
+                    # Move the mouse cursor
+                    pyautogui.moveTo(index_x, index_y)
+
+                    # Perform a click if fingers are close
+                    if abs(index_y - thumb_y) < 20:
+                        pyautogui.mouseDown()
+                        pyautogui.sleep(1)  # Adjust the duration as needed
+                        pyautogui.mouseUp()
+
+                    # Scroll up or down based on the distance between thumb and index finger
+                    distance = math.sqrt((thumb_x - index_x)**2 + (thumb_y - index_y)**2)
+                    if distance > 100:
+                        pyautogui.scroll(1)  # Scroll up
+                    elif distance < 50:
+                        pyautogui.scroll(-1)  # Scroll down
+
+                if id == 12:  # Assuming middle finger
+                    if landmarks[8].y < landmarks[12].y:  # Check if middle finger is below index finger
+                        middle_finger_clicked = True
+                    else:
+                        middle_finger_clicked = False
+
+                    # Perform right-click if middle finger is below index finger
+                    if middle_finger_clicked:
+                        pyautogui.rightClick()
+
+    cv2.imshow('Virtual Mouse', frame)
+    cv2.waitKey(1)
+```
+
+### Explanation
+
+- The script captures video frames from the webcam and flips them horizontally for a better user experience.
+- The frames are converted to RGB format and processed using Mediapipe's Hand detector to detect hand landmarks.
+- Specific hand landmarks are tracked to control the mouse cursor and perform actions.
+- The script displays the frame with annotations and waits for a key press event to exit the loop.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
